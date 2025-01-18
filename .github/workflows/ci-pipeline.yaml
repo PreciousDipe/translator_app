@@ -1,49 +1,51 @@
 name: PollyGlot CI Pipeline
+
 on:
-    workflow_dispatch:
-      inputs:
-        ec2-name:
-          description: update github code to ec2
-          required: true
-          default: 'Linux Server'
-          type: string
+  workflow_dispatch:
+    inputs:
+      ec2-name:
+        description: Run Terraform code to create an EC2 instance
+        required: true
+        default: 'Linux Server'
+        type: string
 
 jobs:
-  provision-ec2:
+  terraform:
+    name: Terraform Apply
     runs-on: ubuntu-latest
-    permissions:
-      id-token: write   # This is needed for OIDC
-      contents: read
+
     steps:
-      - uses: actions/checkout@v4 
-      - uses: actions/setup-node@v4
+      # Checkout the repository
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # Set up AWS Credentials
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v3
         with:
-          node-version: '20'
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          role-to-assume: arn:aws:iam::140023380775:role/gh-role
-          aws-region: us-east-1
-      
-      - name: Setup Terraform
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      # Set up Terraform
+      - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_wrapper: false
+          terraform_version: "1.1.7"
 
+      # Initialize Terraform
+      - name: Terraform Init
+        run: terraform init
+
+      # Apply Terraform changes
       - name: Terraform Apply
-        id: apply
-        env:
-          TF_VAR_ec2_name: "${{ github.event.inputs.ec2-name }}"
-        run: |
-          cd Terraform/
-          terraform init
-          terraform apply -auto-approve
+        run: terraform apply -auto-approve tfplan
 
-      - name: Install rsync
-        run: sudo apt-get update && sudo apt-get install -y rsync
-
-      - name: Retrieve EC2 instance information
+      # Save Terraform Outputs
+      - name: Save Terraform Outputs
+        id: tf_outputs
         run: |
-          # Assuming EC2 instance details are available as Terraform outputs
-          echo "EC2_IP=$(terraform output -raw instance_ip)" >> $GITHUB_ENV
-          echo "EC2_USER=$(terraform output -raw instance_user)" >> $GITHUB_ENV
+          terraform output -json > tf_outputs.json
+          echo "EC2_PUBLIC_IP=$(jq -r '.instance_ip.value' tf_outputs.json)" >> $GITHUB_ENV
+          echo "PRIVATE_KEY=$(jq -r '.private_key_pem.value' tf_outputs.json)" >> $GITHUB_ENV
+        shell: bash
