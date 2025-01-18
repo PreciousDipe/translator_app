@@ -35,10 +35,12 @@ jobs:
 
       # Initialize Terraform
       - name: Terraform Init
+        working-directory: ./Terraform
         run: terraform init
 
       # Apply Terraform changes
       - name: Terraform Apply
+        working-directory: ./Terraform
         run: terraform apply -auto-approve
 
       # Save Terraform Outputs

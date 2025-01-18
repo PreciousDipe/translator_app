@@ -1,0 +1,127 @@
+---
+- name: Configure EC2 instance
+  hosts: all
+  become: yes
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+    - name: Install dependencies
+      apt:
+        name:
+          - curl
+          - build-essential
+          - wget
+          - nodejs
+          - npm
+          - apache2  # Ensure Apache is installed
+        state: present
+
+    - name: Ensure apache2 configuration directory exists
+      file:
+        path: /etc/apache2/sites-available
+        state: directory
+
+    - name: Clone Git repository
+      git:
+        repo: https://github.com/PreciousDipe/translator_app.git
+        dest: /var/www/translator_app
+
+    - name: Install npm dependencies
+      command: npm install
+      args:
+        chdir: /var/www/translator_app
+
+    - name: Set permissions for app directory
+      file:
+        path: /var/www/translator_app
+        state: directory
+        owner: ubuntu
+        group: ubuntu
+        recurse: yes
+
+    - name: Change ownership of the app directory
+      file:
+        path: /var/www/translator_app
+        state: directory
+        owner: www-data
+        group: www-data
+        recurse: yes
+
+    - name: Change permissions of the app directory
+      file:
+        path: /var/www/translator_app
+        state: directory
+        mode: '0755'
+        recurse: yes
+
+    - name: Create a systemd service for the Node.js app
+      copy:
+        dest: /etc/systemd/system/pollyglot.service
+        content: |
+          [Unit]
+          Description=Node.js pollyglot
+          After=network.target multi-user.target
+          [Service]
+          User=ubuntu
+          WorkingDirectory=/var/www/translator_app
+          ExecStart=/usr/bin/npm start
+          Restart=always
+          Environment=NODE_ENV=production
+          EnvironmentFile=.env
+          StandardOutput=syslog
+          StandardError=syslog
+          SyslogIdentifier=pollyglot
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: Enable and start the pollyglot service
+      systemd:
+        name: pollyglot.service
+        enabled: yes
+        state: started
+
+    - name: Configure Apache for reverse proxy
+      copy:
+        dest: /etc/apache2/sites-available/pollyglot.conf
+        content: |
+          <VirtualHost *:80>
+            ServerAdmin webmaster@localhost
+            ServerName pollyglot.com
+            ServerAlias www.pollyglot.com
+            DocumentRoot /var/www/translator_app/Public
+            ProxyRequests Off
+            ProxyPreserveHost On
+            ProxyPass / http://localhost:3000/
+            ProxyPassReverse / http://localhost:3000/
+            ErrorLog ${APACHE_LOG_DIR}/error.log
+            CustomLog ${APACHE_LOG_DIR}/access.log combined
+          </VirtualHost>
+
+    - name: Enable Apache modules
+      apache2_module:
+        name: "{{ item }}"
+        state: present
+      loop:
+        - proxy
+        - proxy_http
+
+    - name: Enable site configuration
+      command: a2ensite pollyglot.conf
+      notify:
+        - Restart Apache
+
+  handlers:
+    - name: Restart Apache
+      systemd:
+        name: apache2
+        state: restarted
+
+    - name: Install certbot and obtain SSL certificate
+      apt:
+        name: python3-certbot-apache
+        state: present
+
+    - name: Obtain SSL certificate for pollyglot.mooo.com
+      command: sudo certbot --apache -d pollyglot.mooo.com
