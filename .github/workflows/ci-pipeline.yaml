@@ -1,0 +1,49 @@
+name: PollyGlot CI Pipeline
+on:
+    workflow_dispatch:
+      inputs:
+        ec2-name:
+          description: update github code to ec2
+          required: true
+          default: 'Linux Server'
+          type: string
+
+jobs:
+  provision-ec2:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write   # This is needed for OIDC
+      contents: read
+    steps:
+      - uses: actions/checkout@v4 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: arn:aws:iam::140023380775:role/gh-role
+          aws-region: us-east-1
+      
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
+      - name: Terraform Apply
+        id: apply
+        env:
+          TF_VAR_ec2_name: "${{ github.event.inputs.ec2-name }}"
+        run: |
+          cd Terraform/
+          terraform init
+          terraform apply -auto-approve
+
+      - name: Install rsync
+        run: sudo apt-get update && sudo apt-get install -y rsync
+
+      - name: Retrieve EC2 instance information
+        run: |
+          # Assuming EC2 instance details are available as Terraform outputs
+          echo "EC2_IP=$(terraform output -raw instance_ip)" >> $GITHUB_ENV
+          echo "EC2_USER=$(terraform output -raw instance_user)" >> $GITHUB_ENV
