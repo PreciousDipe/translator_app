@@ -6,7 +6,7 @@ resource "tls_private_key" "rsa_4096" {
 
 variable "key_name" {
   description = "Name of the SSH keypair to use in AWS"
-  default     = "polly.pem"
+  default     = "unique-polly.pem"
 }
 
 // Create a new key pair for connecting to the EC2 instance via ssh
