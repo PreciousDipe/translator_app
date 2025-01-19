@@ -56,6 +56,7 @@ terraform apply
 ```
 
 ## Project Structure
+```java
 ├── translator_app/              
 │   ├── .github/workflows/
 │   │   └── ci-pipeline.yaml    
@@ -78,6 +79,6 @@ terraform apply
 │   ├── package.json            
 │   ├── README.md
 │   └── server.js
-
+```
 
 ##### link to the [pollyglot](https://pollyglot.mooo.com/) webapp 
