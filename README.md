@@ -1,4 +1,4 @@
-# Deploying an App with SSL on a Linux Server
+# Deploying a Nodejs with SSL on a Linux Server
 
 This project demonstrates the deployment of a sample **Node.js application** to a Linux server on AWS. The setup includes **continuous deployment** using GitHub Actions, **Apache** as the web server, and **Let's Encrypt** for SSL configuration. Infrastructure provisioning is automated using **Terraform** and **Ansible**.
 
