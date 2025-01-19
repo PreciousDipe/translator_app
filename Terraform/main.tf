@@ -77,7 +77,7 @@ resource "aws_instance" "public_instance" {
     Name = "Linux Server"
   }
 
-  provisioner "file" {
+  /* provisioner "file" {
     source      = "./deploy-app.yml"  # Path to your Ansible playbook
     destination = "/home/ubuntu/deploy-app.yml"  # Where the playbook will be stored on the instance
 
@@ -106,6 +106,7 @@ resource "aws_instance" "public_instance" {
       private_key = tls_private_key.rsa_4096.private_key_pem
     }
   }
+  */
 }
 
 // Outputs

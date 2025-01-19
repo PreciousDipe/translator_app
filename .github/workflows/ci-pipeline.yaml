@@ -49,5 +49,4 @@ jobs:
         run: |
           terraform output -json > tf_outputs.json
           echo "EC2_PUBLIC_IP=$(jq -r '.instance_ip.value' tf_outputs.json)" >> $GITHUB_ENV
-          echo "PRIVATE_KEY=$(jq -r '.private_key_pem.value' tf_outputs.json)" >> $GITHUB_ENV
         shell: bash
