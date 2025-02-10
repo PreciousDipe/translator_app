@@ -1,34 +1,52 @@
-name: Deploy to Droplet
+name: PollyGlot CI Pipeline
 
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
+    inputs:
+      ec2-name:
+        description: Run Terraform code to create an EC2 instance
+        required: true
+        default: 'Linux Server'
+        type: string
 
 jobs:
-  deploy:
+  terraform:
+    name: Terraform Apply
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v3
+      # Checkout the repository
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
-      - name: Setup SSH Agent
-        uses: webfactory/ssh-agent@v0.9.0
+      # Set up AWS Credentials
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.2.0
+      # Set up Terraform
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
         with:
-          host: ${{ secrets.DEPLOY_HOST }}       # e.g. your Droplet’s IP address or domain name
-          username: ${{ secrets.DEPLOY_USER }}     # e.g. "root" or another user
-          key: ${{ secrets.SSH_PRIVATE_KEY }}      # The same private key secret as above
-          # If you use a passphrase, uncomment the next line:
-          # passphrase: ${{ secrets.SSH_PASSPHRASE }}
-          script: |
-            cd /root/grants-consult/
-            echo "Pulling the latest changes from GitHub..."
-            git pull origin main
-            echo "Checking service status on the Droplet..."
-            sudo systemctl status grantsconsult.service
+          terraform_version: "1.1.7"
+
+      # Initialize Terraform
+      - name: Terraform Init
+        working-directory: ./Terraform
+        run: terraform init
+
+      # Apply Terraform changes
+      - name: Terraform Apply
+        working-directory: ./Terraform
+        run: terraform apply -auto-approve
+
+      # Save Terraform Outputs
+      - name: Save Terraform Outputs
+        id: tf_outputs
+        run: |
+          terraform output -json > tf_outputs.json
+          echo "EC2_PUBLIC_IP=$(jq -r '.instance_ip.value' tf_outputs.json)" >> $GITHUB_ENV
+        shell: bash
