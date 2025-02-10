@@ -27,7 +27,7 @@ jobs:
           # If you use a passphrase, uncomment the next line:
           # passphrase: ${{ secrets.SSH_PASSPHRASE }}
           script: |
-            cd /root
+            cd /root/grants-consult/
             echo "Pulling the latest changes from GitHub..."
             git pull origin main
             echo "Checking service status on the Droplet..."
